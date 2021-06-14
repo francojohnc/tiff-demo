@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+    <title>tiff.js demo</title>
+</head>
+<body>
+<button onclick="downloadClick()">download</button>
+<script src="./tiff.min.js"></script>
+<script type="text/javascript">
+    function loadImage(filename) {
+        const xhr = new XMLHttpRequest();
+        xhr.responseType = 'arraybuffer';
+        xhr.open('GET', filename);
+        xhr.onload = function (e) {
+            const tiff = new Tiff({buffer: xhr.response});
+            const width = tiff.width();
+            const height = tiff.height();
+            const canvas = tiff.toCanvas();
+            if (canvas) {
+                canvas.setAttribute('style', 'width:' + (width * 0.3) + 'px; height: ' + (height * 0.3) + 'px');
+                document.body.append(canvas);
+            }
+        };
+        xhr.send();
+    }
+
+    loadImage('https://file-examples-com.github.io/uploads/2017/10/file_example_TIFF_1MB.tiff');
+</script>
+<script>
+    function download(url, name, opts) {
+        const xhr = new XMLHttpRequest()
+        xhr.open('GET', url)
+        xhr.responseType = 'blob'
+        xhr.onload = function () {
+            saveAs(xhr.response, name, opts)
+        }
+        xhr.onerror = function () {
+            console.error('could not download file')
+        }
+        xhr.send()
+    }
+
+    function corsEnabled(url) {
+        const xhr = new XMLHttpRequest()
+        xhr.open('HEAD', url, false)
+        try {
+            xhr.send()
+        } catch (e) {
+        }
+        return xhr.status >= 200 && xhr.status <= 299
+    }
+
+    function click(node) {
+        try {
+            node.dispatchEvent(new MouseEvent('click'))
+        } catch (e) {
+            const evt = document.createEvent('MouseEvents')
+            evt.initMouseEvent('click', true, true, window, 0, 0, 0, 80, 20, false, false, false, false, 0, null)
+            node.dispatchEvent(evt);
+        }
+    }
+
+    function saveAs(blob, name) {
+        const a = document.createElement('a');
+        name = blob.name || 'download';
+        a.download = name;
+        a.rel = 'noopener';
+        if (typeof blob === 'string') {
+            a.href = blob
+            if (a.origin !== location.origin) {
+                corsEnabled(a.href) ? download(blob, name, opts) : click(a, a.target = '_blank')
+            } else {
+                click(a)
+            }
+        } else {
+            // Support blobs
+            a.href = URL.createObjectURL(blob)
+            setTimeout(function () {
+                URL.revokeObjectURL(a.href)
+            }, 4E4) // 40s
+            setTimeout(function () {
+                click(a)
+            }, 0)
+        }
+    }
+
+    function dataUrlToBlob(dataurl, filename, lastModified = Date.now()) {
+        return new Promise((resolve) => {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            const file = new Blob([u8arr], {type: mime});
+            file.name = filename;
+            file.lastModified = lastModified;
+            resolve(file);
+        });
+    }
+
+    function downloadClick() {
+        const canvas = document.getElementsByTagName('canvas')[0];
+        const dataURL = canvas.toDataURL("image/png");
+        // const data = canvas.getImageData();
+        // const blob = canvas.toBlob('image/png');
+        dataUrlToBlob(dataURL, 'test.png')
+            .then(blob => {
+                saveAs(blob);
+            });
+        // console.log(blob);
+        // console.log(data);
+    }
+</script>
+</body>
+</html>
